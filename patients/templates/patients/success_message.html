@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>sucessful message</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f3f7f5;
+            margin: 0;
+            padding: 40px 16px;
+        }
+        .container {
+            max-width: 550px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Registration Successful!</h1>
+
+        {% if messages %}
+            {% for message in messages %}
+                <p role="status">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+
+        <a href="{% url 'user_registration' %}">
+            New Registration
+        </a>
+        </div>
+
+</body>
+</html>
