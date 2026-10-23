@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row g-3 mb-4">
+    {% for key, value in summary.items %}
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="small text-muted text-uppercase">{{ key|cut:'_'|title }}</div>
+                <h3 class="mt-2 mb-0">{{ value }}</h3>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h4>Add patient to queue</h4>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3"><label class="form-label">Patient</label>{{ form.patient }}</div>
+                    <div class="mb-3"><label class="form-label">Assigned doctor</label>{{ form.assigned_doctor }}</div>
+                    <button type="submit" class="btn btn-primary">Add to queue</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4>Waiting queue</h4>
+                    {% if user.role == 'ADMIN' or user.role == 'DOCTOR' %}
+                    <form method="post" action="{% url 'call_next_patient' %}">
+                        {% csrf_token %}
+                        <button class="btn btn-warning" type="submit">Call next patient</button>
+                    </form>
+                    {% endif %}
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead><tr><th>Ticket</th><th>Patient</th><th>Registered</th><th>Waiting</th><th>Doctor</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody>
+                            {% for entry in entries %}
+                            <tr>
+                                <td>{{ entry.ticket_number }}</td>
+                                <td>{{ entry.patient.full_name }}</td>
+                                <td>{{ entry.registered_at|date:'H:i' }}</td>
+                                <td>{{ entry.registered_at|timesince }}</td>
+                                <td>{{ entry.assigned_doctor|default:'Unassigned' }}</td>
+                                <td><span class="badge bg-info text-dark">{{ entry.status }}</span></td>
+                                <td>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        {% if user.role == 'ADMIN' or user.role == 'DOCTOR' %}
+                                            {% if entry.status == 'CALLED' %}
+                                            <form method="post" action="{% url 'queue_entry_action' entry.pk %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="start_consultation">
+                                                <button class="btn btn-sm btn-success" type="submit">Consult</button>
+                                            </form>
+                                            {% endif %}
+                                            {% if entry.status == 'IN_CONSULTATION' %}
+                                            <form method="post" action="{% url 'queue_entry_action' entry.pk %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="complete_consultation">
+                                                <button class="btn btn-sm btn-primary" type="submit">Complete</button>
+                                            </form>
+                                            {% endif %}
+                                        {% endif %}
+                                        {% if user.role == 'ADMIN' or user.role == 'RECEPTIONIST' %}
+                                            <form method="post" action="{% url 'queue_entry_action' entry.pk %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="mark_no_show">
+                                                <button class="btn btn-sm btn-danger" type="submit">No-show</button>
+                                            </form>
+                                            {% if entry.status == 'CANCELLED' %}
+                                            <form method="post" action="{% url 'queue_entry_action' entry.pk %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="requeue">
+                                                <button class="btn btn-sm btn-secondary" type="submit">Requeue</button>
+                                            </form>
+                                            {% else %}
+                                            <form method="post" action="{% url 'queue_entry_action' entry.pk %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="cancel">
+                                                <button class="btn btn-sm btn-outline-dark" type="submit">Cancel</button>
+                                            </form>
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="7">No patients in the queue today.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mt-2">
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h4>Current consultation</h4>
+                {% if current_consultation %}
+                    <p><strong>Patient:</strong> {{ current_consultation.patient.full_name }}</p>
+                    <p><strong>Ticket:</strong> {{ current_consultation.ticket_number }}</p>
+                    <p><strong>Started:</strong> {{ current_consultation.consultation_started_at|date:'Y-m-d H:i' }}</p>
+                    <p><strong>Elapsed:</strong> {{ current_consultation.consultation_started_at|timesince }}</p>
+                {% else %}
+                    <p>No patient is currently in consultation.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h4>Recent activity</h4>
+                {% for log in recent_activity %}
+                <div class="border-bottom py-2">
+                    <strong>{{ log.action }}</strong> - {{ log.description }}
+                    <div class="small text-muted">{{ log.created_at|date:'Y-m-d H:i' }} by {{ log.user.username }}</div>
+                </div>
+                {% empty %}
+                <p>No recent activity.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

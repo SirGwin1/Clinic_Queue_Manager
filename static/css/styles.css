@@ -1,0 +1,6 @@
+body { background: #f4f7fb; }
+.card { border-radius: 14px; }
+.navbar-brand { font-weight: 700; }
+.btn { border-radius: 0.6rem; }
+.table th, .table td { vertical-align: middle; }
+@media (max-width: 767.98px) { .navbar-nav { margin-top: 10px; } }

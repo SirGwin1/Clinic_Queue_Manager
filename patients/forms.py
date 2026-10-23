@@ -1,34 +1,26 @@
-
 from django import forms
-from .models import Registration
+from .models import Patient
 
 
-class RegistrationForm(forms.ModelForm):
+class PatientRegistrationForm(forms.ModelForm):
     class Meta:
-        model = Registration
-        fields = ["name", "phone", "reasons"]
-
+        model = Patient
+        fields = ['full_name', 'date_of_birth', 'sex', 'phone_number']
         widgets = {
-            "name": forms.TextInput(attrs={
-                "placeholder": "Enter your name"
-            }),
-            "phone": forms.TextInput(attrs={
-                "placeholder": "Enter phone number"
-            }),
-            "reasons": forms.Textarea(attrs={
-                "placeholder": "Enter your reason for visiting"
-            }),
+            'full_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Full name'}),
+            'date_of_birth': forms.DateInput(
+                attrs={'class': 'form-control', 'type': 'date'},
+                format='%Y-%m-%d',
+            ),
+            'sex': forms.Select(
+                attrs={'class': 'form-select'},
+                choices=[('', 'Select sex'), ('Female', 'Female'), ('Male', 'Male'), ('Other', 'Other')],
+            ),
+            'phone_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+27 000 000 000'}),
         }
 
-    def clean_phone(self):
-        phone = self.cleaned_data["phone"]
-
-        allowed_characters = phone.replace("+", "", 1)
-
-        if not allowed_characters.replace(" ", "").replace("-", "").isdigit():
-            raise forms.ValidationError(
-                "Enter a valid phone number using digits, spaces, "
-                "hyphens, or a leading plus sign."
-            )
-
-        return phone
+    def clean_full_name(self):
+        name = (self.cleaned_data.get('full_name') or '').strip()
+        if len(name) < 2:
+            raise forms.ValidationError('Provide the patient full name.')
+        return name
