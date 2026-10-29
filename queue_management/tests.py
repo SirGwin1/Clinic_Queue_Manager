@@ -44,3 +44,12 @@ class QueueTests(TestCase):
         self.client.login(username='reception', password='secret123')
         response = self.client.get(reverse('queue_history'))
         self.assertContains(response, 'name="queue_date" class="form-control" value=""')
+
+    def test_dashboard_uses_real_todays_appointments(self):
+        QueueEntry.objects.create(patient=self.patient_a, ticket_number='Q-T1', queue_date=date.today(), status=QueueEntry.WAITING)
+        QueueEntry.objects.create(patient=self.patient_b, ticket_number='Q-T2', queue_date=date.today(), status=QueueEntry.CALLED)
+        self.client.login(username='reception', password='secret123')
+        response = self.client.get(reverse('dashboard'))
+        self.assertContains(response, self.patient_a.full_name)
+        self.assertContains(response, self.patient_b.full_name)
+        self.assertNotContains(response, 'Sarah Williams')

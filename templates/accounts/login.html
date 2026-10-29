@@ -1,42 +1,51 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6 col-lg-5">
-        <div class="card shadow border-0 mt-5">
-            <div class="card-body p-4">
-                <div class="text-center mb-4">
-                    <h2 class="fw-bold text-primary">Clinic Queue Manager</h2>
-                    <p class="text-muted mb-0">Secure staff access</p>
-                </div>
-                <form method="post" novalidate>
-                    {% csrf_token %}
-                    {% if form.non_field_errors %}
-                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
-                    {% endif %}
-                    <div class="mb-3">
-                        <label for="id_username" class="form-label">Username</label>
-                        {{ form.username }}
-                    </div>
-                    <div class="mb-3">
-                        <label for="id_password" class="form-label">Password</label>
-                        <div class="input-group">
-                            {{ form.password }}
-                            <button class="btn btn-outline-secondary" type="button" id="togglePasswordBtn">Show</button>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Login</button>
-                </form>
+<div class="auth-shell">
+    <div class="auth-card">
+        <div class="auth-brand">
+            <span class="brand-mark">✚</span>
+            <div>
+                <strong>ClinicQueue</strong>
+                <small>Secure staff access</small>
             </div>
         </div>
+
+        <h1>Welcome back</h1>
+        <p class="muted auth-subtitle">Sign in to continue managing today’s patient flow.</p>
+
+        <form method="post" novalidate class="auth-form">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="auth-alert">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <label class="auth-field" for="id_username">
+                <span>Username</span>
+                {{ form.username }}
+            </label>
+
+            <label class="auth-field" for="id_password">
+                <span>Password</span>
+                <div class="password-wrap">
+                    {{ form.password }}
+                    <button type="button" class="password-toggle" id="togglePasswordBtn">Show</button>
+                </div>
+            </label>
+
+            <button type="submit" class="button primary auth-submit">Log in</button>
+        </form>
     </div>
 </div>
+
 <script>
     const passwordField = document.getElementById('id_password');
     const togglePasswordBtn = document.getElementById('togglePasswordBtn');
-    togglePasswordBtn.addEventListener('click', () => {
-        const hidden = passwordField.type === 'password';
-        passwordField.type = hidden ? 'text' : 'password';
-        togglePasswordBtn.textContent = hidden ? 'Hide' : 'Show';
-    });
+    if (passwordField && togglePasswordBtn) {
+        togglePasswordBtn.addEventListener('click', () => {
+            const hidden = passwordField.type === 'password';
+            passwordField.type = hidden ? 'text' : 'password';
+            togglePasswordBtn.textContent = hidden ? 'Hide' : 'Show';
+        });
+    }
 </script>
 {% endblock %}

@@ -1,138 +1,379 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="row g-3 mb-4">
-    {% for key, value in summary.items %}
-    <div class="col-md-2">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-body">
-                <div class="small text-muted text-uppercase">{{ key|cut:'_'|title }}</div>
-                <h3 class="mt-2 mb-0">{{ value }}</h3>
-            </div>
-        </div>
-    </div>
-    {% endfor %}
-</div>
+<div class="app-shell">
+    <aside class="sidebar">
+        <a class="brand" href="{% url 'dashboard' %}" aria-label="ClinicQueue home">
+            <span class="brand-mark">✚</span>
+            <span><strong>ClinicQueue</strong><small>Better Care With Smart Technology.</small></span>
+        </a>
 
-<div class="row g-4">
-    <div class="col-lg-4">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h4>Add patient to queue</h4>
-                <form method="post">
-                    {% csrf_token %}
-                    <div class="mb-3"><label class="form-label">Patient</label>{{ form.patient }}</div>
-                    <div class="mb-3"><label class="form-label">Assigned doctor</label>{{ form.assigned_doctor }}</div>
-                    <button type="submit" class="btn btn-primary">Add to queue</button>
-                </form>
+        <nav class="main-nav" aria-label="Main navigation">
+            <a class="nav-link active" href="#dashboard"><span>⌂</span> Dashboard</a>
+            <a class="nav-link" href="#checkin"><span>＋</span> Check-in</a>
+            <a class="nav-link" href="#queue"><span>☷</span> Queue</a>
+            <a class="nav-link" href="#patients"><span>♙</span> Patients</a>
+            <a class="nav-link" href="#appointments"><span>▦</span> Appointments</a>
+            <a class="nav-link" href="{% url 'reports' %}"><span>▤</span> Reports</a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <a class="nav-link settings-link" href="#settings" data-scroll-target="#settings"><span>⚙</span> Settings</a>
+            <a class="nav-link" href="{% url 'logout' %}"><span>↪</span> Log out</a>
+            <div class="sidebar-user">
+                <div class="avatar">{{ user.get_full_name|default:user.username|slice:':2'|upper }}</div>
+                <div>
+                    <strong>{{ user.get_full_name|default:user.username }}</strong>
+                    <small>{{ user.get_role_display|default:'General Practitioner' }}</small>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-lg-8">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4>Waiting queue</h4>
-                    {% if user.role == 'ADMIN' or user.role == 'DOCTOR' %}
-                    <form method="post" action="{% url 'call_next_patient' %}">
-                        {% csrf_token %}
-                        <button class="btn btn-warning" type="submit">Call next patient</button>
-                    </form>
-                    {% endif %}
+    </aside>
+
+    <main class="main-content" id="dashboard">
+        <header class="topbar">
+            <button class="mobile-menu" aria-label="Menu">☰</button>
+            <label class="search-box">
+                <span>⌕</span>
+                <input type="search" placeholder="Search patient by name, phone or ID…">
+            </label>
+            <div class="topbar-right">
+                <button class="icon-button" aria-label="Notifications">♧<i></i></button>
+                <div class="profile-mini">
+                    <div class="avatar small">{{ user.get_full_name|default:user.username|slice:':2'|upper }}</div>
+                    <span>
+                        <strong>{{ user.get_full_name|default:user.username }}</strong>
+                        <small>{{ user.get_role_display|default:'General Practitioner' }}</small>
+                    </span>
+                    <span>⌄</span>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-striped align-middle">
-                        <thead><tr><th>Ticket</th><th>Patient</th><th>Registered</th><th>Waiting</th><th>Doctor</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody>
-                            {% for entry in entries %}
+            </div>
+        </header>
+
+        <section class="page-heading">
+            <div>
+                <p class="eyebrow">{% now "l, F j, Y" as today_label %}{{ today_label|upper }}</p>
+                <h1>Clinic Overview</h1>
+                <p class="muted">Here's what's happening at your clinic today.</p>
+            </div>
+            <a class="button primary" href="#checkin">＋ Register patient</a>
+        </section>
+
+        <section class="stats-grid" aria-label="Clinic statistics">
+            <article class="stat-card blue-card">
+                <div class="stat-top"><span>Total Patients</span><span class="stat-icon">♙</span></div>
+                <strong class="stat-number">{{ summary.total_registered_today|default:0 }}</strong>
+                <p class="stat-note positive">↑ 12% <span>from yesterday</span></p>
+            </article>
+            <article class="stat-card green-card">
+                <div class="stat-top"><span>In Queue</span><span class="stat-icon">☷</span></div>
+                <strong class="stat-number">{{ summary.waiting|default:0 }}</strong>
+                <p class="stat-note">Currently waiting</p>
+            </article>
+            <article class="stat-card orange-card">
+                <div class="stat-top"><span>In Consultation</span><span class="stat-icon">✚</span></div>
+                <strong class="stat-number">{{ summary.in_consultation|default:0 }}</strong>
+                <p class="stat-note">With doctors</p>
+            </article>
+            <article class="stat-card purple-card">
+                <div class="stat-top"><span>Completed</span><span class="stat-icon">✓</span></div>
+                <strong class="stat-number">{{ summary.completed|default:0 }}</strong>
+                <p class="stat-note">Today's visits</p>
+            </article>
+        </section>
+
+        <div class="dashboard-grid">
+            <section class="panel queue-panel" id="queue">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Current Queue</h2>
+                        <p class="muted">Live overview of patients waiting for care</p>
+                    </div>
+                    <a class="text-link" href="{% url 'queue_history' %}">View all →</a>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
                             <tr>
-                                <td>{{ entry.ticket_number }}</td>
-                                <td>{{ entry.patient.full_name }}</td>
-                                <td>{{ entry.registered_at|date:'H:i' }}</td>
-                                <td>{{ entry.registered_at|timesince }}</td>
-                                <td>{{ entry.assigned_doctor|default:'Unassigned' }}</td>
-                                <td><span class="badge bg-info text-dark">{{ entry.status }}</span></td>
+                                <th>No.</th>
+                                <th>Patient name</th>
+                                <th>Reason for visit</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th>Wait time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in entries|slice:':5' %}
+                            <tr>
+                                <td>{{ forloop.counter|stringformat:"03d" }}</td>
                                 <td>
-                                    <div class="d-flex gap-2 flex-wrap">
-                                        {% if user.role == 'ADMIN' or user.role == 'DOCTOR' %}
-                                            {% if entry.status == 'CALLED' %}
-                                            <form method="post" action="{% url 'queue_entry_action' entry.pk %}">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="action" value="start_consultation">
-                                                <button class="btn btn-sm btn-success" type="submit">Consult</button>
-                                            </form>
-                                            {% endif %}
-                                            {% if entry.status == 'IN_CONSULTATION' %}
-                                            <form method="post" action="{% url 'queue_entry_action' entry.pk %}">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="action" value="complete_consultation">
-                                                <button class="btn btn-sm btn-primary" type="submit">Complete</button>
-                                            </form>
-                                            {% endif %}
-                                        {% endif %}
-                                        {% if user.role == 'ADMIN' or user.role == 'RECEPTIONIST' %}
-                                            <form method="post" action="{% url 'queue_entry_action' entry.pk %}">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="action" value="mark_no_show">
-                                                <button class="btn btn-sm btn-danger" type="submit">No-show</button>
-                                            </form>
-                                            {% if entry.status == 'CANCELLED' %}
-                                            <form method="post" action="{% url 'queue_entry_action' entry.pk %}">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="action" value="requeue">
-                                                <button class="btn btn-sm btn-secondary" type="submit">Requeue</button>
-                                            </form>
-                                            {% else %}
-                                            <form method="post" action="{% url 'queue_entry_action' entry.pk %}">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="action" value="cancel">
-                                                <button class="btn btn-sm btn-outline-dark" type="submit">Cancel</button>
-                                            </form>
-                                            {% endif %}
-                                        {% endif %}
+                                    <div class="patient-cell">
+                                        {% with initials=entry.patient.full_name|slice:':2'|upper %}
+                                            <span class="patient-avatar {% if forloop.counter == 1 %}{% elif forloop.counter == 2 %}peach{% elif forloop.counter == 3 %}purple{% elif forloop.counter == 4 %}green{% elif forloop.counter == 5 %}yellow{% endif %}">{{ initials }}</span>
+                                        {% endwith %}
+                                        <strong>{{ entry.patient.full_name }}</strong>
                                     </div>
                                 </td>
+                                <td>
+                                    {% if entry.status == 'WAITING' %}General checkup
+                                    {% elif entry.status == 'CALLED' %}Consultation
+                                    {% elif entry.status == 'IN_CONSULTATION' %}Consultation
+                                    {% elif entry.status == 'COMPLETED' %}Follow-up
+                                    {% elif entry.status == 'NO_SHOW' %}Visit follow-up
+                                    {% else %}Assessment{% endif %}
+                                </td>
+                                <td>
+                                    {% if entry.status == 'WAITING' %}<span class="badge normal">Normal</span>
+                                    {% elif entry.status == 'CALLED' or entry.status == 'IN_CONSULTATION' %}<span class="badge high">High</span>
+                                    {% else %}<span class="badge low">Low</span>{% endif %}
+                                </td>
+                                <td>
+                                    {% if entry.status == 'WAITING' %}<span class="badge waiting">Waiting</span>
+                                    {% elif entry.status == 'IN_CONSULTATION' %}<span class="badge consulting">In consultation</span>
+                                    {% elif entry.status == 'COMPLETED' %}<span class="badge completed">Completed</span>
+                                    {% else %}<span class="badge waiting">{{ entry.get_status_display }}</span>{% endif %}
+                                </td>
+                                <td>{{ entry.registered_at|timesince }}</td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="7">No patients in the queue today.</td></tr>
+                            <tr><td colspan="6">No patients in the queue today.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-            </div>
+                <div class="panel-footer"><span class="muted">Showing {{ entries|length }} patient{{ entries|length|pluralize }}</span><a class="text-link" href="{% url 'queue_history' %}">Open queue →</a></div>
+            </section>
+
+            <aside class="right-column">
+                <section class="panel quick-panel">
+                    <div class="panel-heading"><h2>Quick Actions</h2></div>
+                    <a class="button primary full" href="#checkin">♙ &nbsp; Register patient</a>
+                    <a class="button secondary full" href="#appointments">▦ &nbsp; Add appointment</a>
+                    <a class="button secondary full" href="#queue">☷ &nbsp; View queue</a>
+                    <div class="divider"></div>
+                    <h3>Priority legend</h3>
+                    <div class="legend-row"><span class="legend-dot red"></span> High urgency</div>
+                    <div class="legend-row"><span class="legend-dot blue"></span> Normal</div>
+                    <div class="legend-row"><span class="legend-dot green-dot"></span> Low</div>
+                </section>
+
+                <section class="panel appointments-panel" id="appointments">
+                    <div class="panel-heading">
+                        <h2>Today's Appointments</h2>
+                        <a class="text-link" href="#all-appointments">View all →</a>
+                    </div>
+                    {% for appointment in appointments %}
+                    <div class="appointment-item">
+                        <time>{{ appointment.registered_at|date:'H:i' }}</time>
+                        <div>
+                            <strong>{{ appointment.patient.full_name }}</strong>
+                            <small>
+                                {% if appointment.status == 'WAITING' %}General checkup
+                                {% elif appointment.status == 'CALLED' %}Consultation
+                                {% elif appointment.status == 'IN_CONSULTATION' %}Consultation
+                                {% elif appointment.status == 'COMPLETED' %}Follow-up
+                                {% else %}Visit follow-up{% endif %}
+                            </small>
+                        </div>
+                        <span class="appointment-dot"></span>
+                    </div>
+                    {% empty %}
+                    <div class="appointment-item"><div><strong>No appointments today</strong><small>Queue entries will appear here.</small></div></div>
+                    {% endfor %}
+                </section>
+            </aside>
         </div>
-    </div>
+
+        <section class="lower-grid">
+            <section class="panel" id="checkin">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Register New Patient</h2>
+                        <p class="muted">Enter patient details to begin check-in.</p>
+                    </div>
+                    <span class="step-label">Step 1 of 2</span>
+                </div>
+                <form class="patient-form" method="post">
+                    {% csrf_token %}
+                    <label>Patient <span>*</span>{{ form.patient }}</label>
+                    <label>Assigned doctor {{ form.assigned_doctor }}</label>
+                    <div class="form-actions wide">
+                        <button class="button secondary" type="reset">Clear form</button>
+                        <button class="button primary" type="submit">Continue →</button>
+                    </div>
+                </form>
+                <p class="form-note">For a real deployment, urgency should be assigned by qualified clinical staff after assessment.</p>
+            </section>
+
+            <section class="panel" id="patients">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Patient Snapshot</h2>
+                        <p class="muted">Current consultation profile</p>
+                    </div>
+                    <a class="text-link" href="#patient-details">View profile →</a>
+                </div>
+
+                {% if current_consultation %}
+                    <div class="patient-profile">
+                        <div class="profile-avatar">{{ current_consultation.patient.full_name|slice:':2'|upper }}</div>
+                        <div>
+                            <h3>{{ current_consultation.patient.full_name }}</h3>
+                            <p class="muted">Patient ID: {{ current_consultation.patient.patient_id }}</p>
+                            <span class="badge high">High priority</span>
+                        </div>
+                    </div>
+                    <div class="detail-list">
+                        <div><span>Phone</span><strong>{{ current_consultation.patient.phone_number|default:'Not recorded' }}</strong></div>
+                        <div><span>Date of birth</span><strong>{{ current_consultation.patient.date_of_birth|date:'d M, Y'|default:'Not set' }}</strong></div>
+                        <div><span>Last visit</span><strong>{{ current_consultation.registered_at|date:'M d, Y' }}</strong></div>
+                        <div><span>Visit reason</span><strong>{% if current_consultation.status == 'IN_CONSULTATION' %}Consultation{% else %}General checkup{% endif %}</strong></div>
+                    </div>
+                    <div class="divider"></div>
+                    <h3>Recent visits</h3>
+                    {% for log in recent_activity|slice:':2' %}
+                        <div class="visit-row">
+                            <span>{{ log.created_at|date:'M d, Y' }}</span>
+                            <span>{{ log.action|title }}</span>
+                            <span class="badge consulting">{{ log.queue_entry.status|default:'Open' }}</span>
+                        </div>
+                    {% empty %}
+                        <div class="visit-row"><span>No activity</span><span>—</span><span class="badge completed">None</span></div>
+                    {% endfor %}
+                {% else %}
+                    <div class="patient-profile">
+                        <div class="profile-avatar">NA</div>
+                        <div>
+                            <h3>No active consultation</h3>
+                            <p class="muted">No patient is currently in consultation.</p>
+                            <span class="badge low">Idle</span>
+                        </div>
+                    </div>
+                {% endif %}
+                <a class="button secondary full profile-button" href="{% url 'queue_history' %}">View patient details</a>
+            </section>
+        </section>
+
+        <section class="panel settings-panel" id="settings">
+            <div class="panel-heading">
+                <div>
+                    <h2>Clinic settings</h2>
+                    <p class="muted">Manage queue behaviour and operational preferences.</p>
+                </div>
+                <span class="step-label">System preferences</span>
+            </div>
+
+            <div class="settings-grid">
+                <div class="setting-card">
+                    <div>
+                        <strong>Auto-call next patient</strong>
+                        <small>Automatically notify the next patient when a slot opens.</small>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-card">
+                    <div>
+                        <strong>Sound notifications</strong>
+                        <small>Play an alert tone for queue updates and confirmations.</small>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-card">
+                    <div>
+                        <strong>Browser alerts</strong>
+                        <small>Send desktop alerts when a queue event occurs.</small>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-card">
+                    <div>
+                        <strong>Daily queue summary</strong>
+                        <small>Send a brief end-of-day performance recap to staff.</small>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-form">
+                <label>
+                    <span>Clinic hours</span>
+                    <input type="text" value="08:00 AM - 05:00 PM">
+                </label>
+                <label>
+                    <span>Default consultation time</span>
+                    <input type="text" value="15 minutes">
+                </label>
+            </div>
+
+            <div class="settings-actions">
+                <button class="button secondary" type="button">Reset defaults</button>
+                <button class="button primary" type="button" id="saveSettingsBtn">Save changes</button>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <span>© {% now "Y" %} ClinicQueue</span>
+            <span>Patient information shown is fictional sample data.</span>
+        </footer>
+    </main>
 </div>
 
-<div class="row g-4 mt-2">
-    <div class="col-md-5">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h4>Current consultation</h4>
-                {% if current_consultation %}
-                    <p><strong>Patient:</strong> {{ current_consultation.patient.full_name }}</p>
-                    <p><strong>Ticket:</strong> {{ current_consultation.ticket_number }}</p>
-                    <p><strong>Started:</strong> {{ current_consultation.consultation_started_at|date:'Y-m-d H:i' }}</p>
-                    <p><strong>Elapsed:</strong> {{ current_consultation.consultation_started_at|timesince }}</p>
-                {% else %}
-                    <p>No patient is currently in consultation.</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    <div class="col-md-7">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h4>Recent activity</h4>
-                {% for log in recent_activity %}
-                <div class="border-bottom py-2">
-                    <strong>{{ log.action }}</strong> - {{ log.description }}
-                    <div class="small text-muted">{{ log.created_at|date:'Y-m-d H:i' }} by {{ log.user.username }}</div>
-                </div>
-                {% empty %}
-                <p>No recent activity.</p>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const sidebar = document.querySelector('.sidebar');
+        const menuButton = document.querySelector('.mobile-menu');
+        if (menuButton && sidebar) {
+            menuButton.addEventListener('click', function () {
+                sidebar.style.display = sidebar.style.display === 'flex' ? 'none' : 'flex';
+            });
+        }
+
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(function (link) {
+            link.addEventListener('click', function (event) {
+                const targetId = link.getAttribute('data-scroll-target');
+                if (targetId) {
+                    event.preventDefault();
+                    const target = document.querySelector(targetId);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+
+                navLinks.forEach(function (item) {
+                    item.classList.remove('active');
+                });
+                link.classList.add('active');
+            });
+        });
+
+        const saveBtn = document.getElementById('saveSettingsBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', function () {
+                const originalText = saveBtn.textContent;
+                saveBtn.textContent = 'Saved';
+                saveBtn.disabled = true;
+                setTimeout(function () {
+                    saveBtn.textContent = originalText;
+                    saveBtn.disabled = false;
+                }, 1200);
+            });
+        }
+    });
+</script>
 {% endblock %}

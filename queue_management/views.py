@@ -63,10 +63,11 @@ def dashboard(request):
     }
     consultation = entries.filter(status=QueueEntry.IN_CONSULTATION).order_by('consultation_started_at').first()
     recent_activity = AuditLog.objects.select_related('user', 'queue_entry').order_by('-created_at')[:8]
+    appointments = entries.order_by('registered_at')[:4]
     return render(
         request,
         'queue_management/queue_dashboard.html',
-        {'entries': entries, 'current_consultation': consultation, 'summary': summary, 'recent_activity': recent_activity, 'form': form},
+        {'entries': entries, 'appointments': appointments, 'current_consultation': consultation, 'summary': summary, 'recent_activity': recent_activity, 'form': form},
     )
 
 
